@@ -1,12 +1,29 @@
 services:
+  db:
+    image: mysql:9
+
+    environment:
+      MYSQL_ROOT_PASSWORD: strong(!)Pass
+      MYSQL_DATABASE: iot_opsamling
+
+    volumes:
+      - ./db_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pstrong(!)Pass"]
+      interval: 2s
+      timeout: 10s
+      retries: 5
+      start_period: 5s
+
   server:
     build:
       context: ./server
-    ports:
-      - 8080:8080
 
-  db:
-    image: mysql:9
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: iot_opsamling
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      db:
+        condition: service_healthy
