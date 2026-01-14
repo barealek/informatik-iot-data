@@ -6,10 +6,30 @@ import (
 	"net/http"
 )
 
+var db Database
+
+type State int
+
+func DecibelToState(dB int) State {
+	if dB < -80 {
+		return StateGone
+	} else if dB < -60 {
+		return StateNear
+	} else {
+		return StateClose
+	}
+}
+
+const (
+	StateGone = iota
+	StateNear
+	StateClose
+)
+
 func main() {
 	// Vi opretter en ny database forbindelse
-	connectionString := "root:strong(!)Pass@tcp(db:3306)/iot_opsamling"
-	var db = NyDatabase(connectionString)
+	connectionString := "root:strong(!)Pass@tcp(db:3306)/iot_opsamling?parseTime=true"
+	db = NewDatabase(connectionString)
 	// Lukker den lige inden main funktionen afsluttes, altså når programmet stopper
 	defer db.Close()
 
@@ -24,11 +44,8 @@ func main() {
 		w.Write([]byte("Healthy"))
 	})
 
-	router.HandleFunc("GET /mac-adresser", func(w http.ResponseWriter, r *http.Request) {
-		alle_adresser := db.FindDevicesForMacs()
-
-		json.NewEncoder(w).Encode(alle_adresser) // ["abc-255", "abc-258",]
-	})
+	router.HandleFunc("POST /data", handlePostData)
+	router.HandleFunc("GET /devices", handleGetAllDevices)
 
 	server := http.Server{
 		Addr:    ":8080",
@@ -41,7 +58,50 @@ func main() {
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
+		log.Println("Server stopped")
 	}()
 
 	select {}
+}
+
+func handlePostData(w http.ResponseWriter, r *http.Request) {
+
+	type macData struct {
+		Mac     string `json:"mac"`
+		Decibel int    `json:"decibel"`
+	}
+
+	// Vi laver en liste som skal gemme vores data
+	requestBody := []macData{}
+
+	// Decode requestens body ind i vores requestBody variabel
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid request body"))
+		return
+	}
+
+	macDecibelMap := make(map[string]int)
+	for _, req := range requestBody {
+		macDecibelMap[req.Mac] = req.Decibel
+	}
+
+	devices := db.FindAllDevices()
+
+	for _, device := range devices {
+		if decibel, ok := macDecibelMap[device.Mac]; ok {
+			state := DecibelToState(decibel)
+			db.UpdateDeviceState(device.ID, state)
+		} else {
+			db.UpdateDeviceState(device.ID, StateGone)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(nil)
+}
+
+func handleGetAllDevices(w http.ResponseWriter, r *http.Request) {
+	devices := db.FindAllDevices()
+	json.NewEncoder(w).Encode(devices)
 }
