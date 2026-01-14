@@ -1,41 +1,61 @@
-/*
-  Complete Getting Started Guide: https://RandomNerdTutorials.com/esp32-bluetooth-low-energy-ble-arduino-ide/
-  Based on Neil Kolban example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleScan.cpp
-  Ported to Arduino ESP32 by Evandro Copercini
-*/
-
 #include <Arduino.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 
-int scanTime = 5; // in seconds
+// UUID fra iBeacon beaconen, BeaconScope appen kan emulere det 
+String targetUUID = "2a3f54f5-cb20-4abb-b4af-3a87ee3fcb8c"; 
+
 BLEScan* pBLEScan;
 
-class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
-  void onResult(BLEAdvertisedDevice advertisedDevice) {
-    Serial.printf("Advertised Device: %s \n", advertisedDevice.toString().c_str());
-  }
-};
-
 void setup() {
-  Serial.begin(115200);
-  Serial.println("Scanning...");
+    Serial.begin(115200);
+    Serial.println("BLE scan starting");
 
-  BLEDevice::init("");
-  pBLEScan = BLEDevice::getScan(); //create new scan
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-  pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
-  pBLEScan->setInterval(100);
-  pBLEScan->setWindow(99);  // less or equal setInterval value
+    BLEDevice::init("");
+    pBLEScan = BLEDevice::getScan(); 
+    pBLEScan->setActiveScan(true);
+    pBLEScan->setInterval(100);
+    pBLEScan->setWindow(99);  
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
-  Serial.print("Devices found: ");
-  Serial.println(foundDevices.getCount());
-  Serial.println("Scan done!");
-  delay(2000);
+    Serial.println("--- Starting 5-Second Scan ---");
+    
+    BLEScanResults foundDevices = pBLEScan->start(5, false); 
+    
+    int count = foundDevices.getCount();
+    Serial.printf("Scan complete. Found %d devices.\n", count);
+
+    for (int i = 0; i < count; i++) {
+        BLEAdvertisedDevice device = foundDevices.getDevice(i);
+        
+        if (device.haveManufacturerData()) {
+            std::string data = device.getManufacturerData();
+            
+            // iBeacon præfiks: 0x4C, 0x00, 0x02, 0x15
+            if (data.length() >= 25 && data[0] == 0x4C && data[1] == 0x00 && data[2] == 0x02 && data[3] == 0x15) {
+                
+                // Tag UUID bytes fra 4 til 19 (de første fire er præfiks)
+                char uuidBuf[37];
+                sprintf(uuidBuf, "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+                        data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11],
+                        data[12], data[13], data[14], data[15], data[16], data[17], data[18], data[19]);
+
+                if (targetUUID == String(uuidBuf)) {
+                    int rssi = device.getRSSI();
+                    Serial.printf(">>> TARGET DETECTED! RSSI: %d\n", rssi);
+                }
+            }
+        }
+    }
+
+    // Stopper med at skanne of cleaner memory
+    pBLEScan->stop(); 
+    foundDevices.dump();
+    pBLEScan->clearResults(); 
+    
+    Serial.println("Waiting 2 seconds before next scan...");
+    delay(2000); 
 }
