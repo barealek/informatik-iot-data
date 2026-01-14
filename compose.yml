@@ -16,6 +16,18 @@ services:
       timeout: 10s
       retries: 5
       start_period: 5s
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: strong(!)Pass
+    depends_on:
+      db:
+        condition: service_healthy
 
   server:
     build:
@@ -27,3 +39,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    develop:
+      watch:
+        - path: ./server
+          action: rebuild

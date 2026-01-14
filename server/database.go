@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -13,7 +14,7 @@ type Database struct {
 	db *sql.DB
 }
 
-func NyDatabase(connectionString string) Database {
+func NewDatabase(connectionString string) Database {
 	database, err := sql.Open("mysql", connectionString)
 	if err != nil {
 		log.Fatal("Fejl under forbindelse til server", err)
@@ -30,18 +31,16 @@ func (db Database) Close() error {
 	return db.db.Close()
 }
 
-type Device struct{}
-
-func (db Database) FindDevicesForMacs(macs []string) (devices []Device) {
-	err := db.db.QueryRow("SELECT * FROM devices WHERE mac IN (?)", macs).Scan(&devices)
-	if err != nil {
-		log.Fatal("Fejl under hentning af enheder", err)
-	}
-	return
+type Device struct {
+	ID        int       `json:"id"`
+	Name      string    `json:"name"`
+	Mac       string    `json:"mac"`
+	State     State     `json:"state"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (db Database) FindAllDevices() (devices []Device) {
-	rows, err := db.db.Query("SELECT * FROM devices")
+	rows, err := db.db.Query("SELECT id, name, mac, state, created_at FROM devices")
 	if err != nil {
 		log.Fatal("Fejl under hentning af enheder", err)
 	}
@@ -49,7 +48,7 @@ func (db Database) FindAllDevices() (devices []Device) {
 
 	for rows.Next() {
 		var device Device
-		err := rows.Scan(&device)
+		err := rows.Scan(&device.ID, &device.Name, &device.Mac, &device.State, &device.CreatedAt)
 		if err != nil {
 			log.Fatal("Fejl under hentning af enheder", err)
 		}
@@ -57,4 +56,20 @@ func (db Database) FindAllDevices() (devices []Device) {
 	}
 
 	return
+}
+
+func (db Database) UpdateDeviceState(id int, state State) error {
+	_, err := db.db.Exec("UPDATE devices SET state = ? WHERE id = ?", state, id)
+	if err != nil {
+		log.Fatal("Fejl under opdatering af enhed", err)
+	}
+	return err
+}
+
+func (db Database) CreateDevice(mac string, state State) error {
+	_, err := db.db.Exec("INSERT INTO devices (mac, state) VALUES (?, ?)", mac, state)
+	if err != nil {
+		log.Fatal("Fejl under oprettelse af enhed", err)
+	}
+	return err
 }
