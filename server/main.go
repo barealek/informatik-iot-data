@@ -10,6 +10,12 @@ var db Database
 
 type State int
 
+const (
+	StateGone = iota
+	StateNear
+	StateClose
+)
+
 func DecibelToState(dB int) State {
 	if dB < -80 {
 		return StateGone
@@ -19,12 +25,6 @@ func DecibelToState(dB int) State {
 		return StateClose
 	}
 }
-
-const (
-	StateGone = iota
-	StateNear
-	StateClose
-)
 
 func main() {
 	// Vi opretter en ny database forbindelse

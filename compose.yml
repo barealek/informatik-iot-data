@@ -43,3 +43,16 @@ services:
       watch:
         - path: ./server
           action: rebuild
+
+  website:
+    container_name: PHP-webserver2
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+    volumes:
+      - ./website:/var/www/html
+    ports:
+      - 8000:80
+    depends_on:
+      db:
+        condition: service_healthy
