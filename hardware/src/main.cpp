@@ -51,7 +51,7 @@ void loop() {
         }
     }
 
-    // Stopper med at skanne of cleaner memory
+    // Stopper med at skanne ofg cleaner memory
     pBLEScan->stop(); 
     foundDevices.dump();
     pBLEScan->clearResults(); 
