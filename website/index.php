@@ -12,3 +12,11 @@ while ($row = mysqli_fetch_assoc($result)) {
                 : "Væk");
     echo $row["name"] . ": " . $row["uuid"] . " - " . $state . "<br>";
 }
+?>
+
+
+<script>
+setTimeout(() => {
+location.reload();
+}, 3000)
+</script>
