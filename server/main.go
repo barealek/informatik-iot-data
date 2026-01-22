@@ -17,13 +17,10 @@ const (
 )
 
 func DecibelToState(dB int) State {
-	if dB < -80 {
-		return StateGone
-	} else if dB < -60 {
-		return StateNear
-	} else {
+	if dB > -80 {
 		return StateClose
 	}
+	return StateNear
 }
 
 func main() {
@@ -61,18 +58,19 @@ func main() {
 		log.Println("Server stopped")
 	}()
 
+	// Vent for evigt
 	select {}
 }
 
 func handlePostData(w http.ResponseWriter, r *http.Request) {
 
-	type macData struct {
-		Mac     string `json:"mac"`
+	type deviceData struct {
+		UUID    string `json:"uuid"`
 		Decibel int    `json:"decibel"`
 	}
 
 	// Vi laver en liste som skal gemme vores data
-	requestBody := []macData{}
+	requestBody := []deviceData{}
 
 	// Decode requestens body ind i vores requestBody variabel
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
@@ -81,15 +79,15 @@ func handlePostData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	macDecibelMap := make(map[string]int)
+	deviceDecibelMap := make(map[string]int)
 	for _, req := range requestBody {
-		macDecibelMap[req.Mac] = req.Decibel
+		deviceDecibelMap[req.UUID] = req.Decibel
 	}
 
 	devices := db.FindAllDevices()
 
 	for _, device := range devices {
-		if decibel, ok := macDecibelMap[device.Mac]; ok {
+		if decibel, ok := deviceDecibelMap[device.UUID]; ok {
 			state := DecibelToState(decibel)
 			db.UpdateDeviceState(device.ID, state)
 		} else {

@@ -10,5 +10,5 @@ while ($row = mysqli_fetch_assoc($result)) {
             : ($row["state"] == 1
                 ? "I nærheden"
                 : "Væk");
-    echo $row["name"] . ": " . $row["mac"] . " - " . $state . "<br>";
+    echo $row["name"] . ": " . $row["uuid"] . " - " . $state . "<br>";
 }
