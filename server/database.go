@@ -34,13 +34,13 @@ func (db Database) Close() error {
 type Device struct {
 	ID        int       `json:"id"`
 	Name      string    `json:"name"`
-	Mac       string    `json:"mac"`
+	UUID      string    `json:"uuid"`
 	State     State     `json:"state"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 func (db Database) FindAllDevices() (devices []Device) {
-	rows, err := db.db.Query("SELECT id, name, mac, state, created_at FROM devices")
+	rows, err := db.db.Query("SELECT id, name, uuid, state, created_at FROM devices")
 	if err != nil {
 		log.Fatal("Fejl under hentning af enheder", err)
 	}
@@ -48,7 +48,7 @@ func (db Database) FindAllDevices() (devices []Device) {
 
 	for rows.Next() {
 		var device Device
-		err := rows.Scan(&device.ID, &device.Name, &device.Mac, &device.State, &device.CreatedAt)
+		err := rows.Scan(&device.ID, &device.Name, &device.UUID, &device.State, &device.CreatedAt)
 		if err != nil {
 			log.Fatal("Fejl under hentning af enheder", err)
 		}
@@ -66,8 +66,8 @@ func (db Database) UpdateDeviceState(id int, state State) error {
 	return err
 }
 
-func (db Database) CreateDevice(mac string, state State) error {
-	_, err := db.db.Exec("INSERT INTO devices (mac, state) VALUES (?, ?)", mac, state)
+func (db Database) CreateDevice(uuid string, state State) error {
+	_, err := db.db.Exec("INSERT INTO devices (uuid, state) VALUES (?, ?)", uuid, state)
 	if err != nil {
 		log.Fatal("Fejl under oprettelse af enhed", err)
 	}

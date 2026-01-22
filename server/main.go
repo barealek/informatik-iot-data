@@ -87,7 +87,7 @@ func handlePostData(w http.ResponseWriter, r *http.Request) {
 	devices := db.FindAllDevices()
 
 	for _, device := range devices {
-		if decibel, ok := deviceDecibelMap[device.Mac]; ok {
+		if decibel, ok := deviceDecibelMap[device.UUID]; ok {
 			state := DecibelToState(decibel)
 			db.UpdateDeviceState(device.ID, state)
 		} else {
