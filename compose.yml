@@ -45,7 +45,6 @@ services:
           action: rebuild
 
   website:
-    container_name: PHP-webserver2
     build:
       context: ./website
       dockerfile: Dockerfile
