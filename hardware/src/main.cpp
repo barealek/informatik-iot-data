@@ -8,7 +8,6 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-
 using json = nlohmann::json;
 
 const char* ssid = "cool-net";
@@ -52,6 +51,8 @@ void loop() {
 
         if (httpResponseCode == 200) { 
             String payload = http.getString();
+            http.end();
+
             Serial.println("Found devices: ");
             Serial.println(payload);
 
@@ -64,7 +65,6 @@ void loop() {
                     targetUUIDs.push_back(device["uuid"].get<std::string>());
                 }
             }
-
 
             Serial.println("--- Starting 5-Second Scan ---");
             
@@ -92,6 +92,30 @@ void loop() {
                             if (targetUUIDs[j] == std::string(uuidBuf)) {
                                 int rssi = device.getRSSI();
                                 Serial.printf(">>> TARGET DETECTED! RSSI: %d\n", rssi);
+                                
+                                json payload =json::array({
+                                    {
+                                        {"uuid", targetUUIDs[j]},
+                                        {"decibel", rssi}
+                                    }
+                                });
+                                std::string requestBody = payload.dump();
+
+                                HTTPClient httpPost;
+
+                                String postUrl = serverName + "/data";
+                                httpPost.begin(postUrl.c_str());
+
+                                httpPost.addHeader("Content-Type", "application/json");
+
+                                int httpPostCode = httpPost.POST(String(requestBody.c_str()));
+
+                                if (httpPostCode > 0) {
+                                    Serial.printf("HTTP response code: %d\n", httpPostCode);
+                                } else {
+                                    Serial.printf("Error code: %s\n", http.errorToString(httpPostCode).c_str());
+                                }
+                                httpPost.end();
                             }
                         }
                     }
@@ -110,8 +134,6 @@ void loop() {
             Serial.println("Website error code: ");
             Serial.println(httpResponseCode);
         }
-        // Frigør ressourcer
-        http.end();
     }
     else {
         Serial.println("WiFi Disconnected");
