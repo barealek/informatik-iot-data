@@ -10,8 +10,8 @@
 
 using json = nlohmann::json;
 
-const char* ssid = "cool-net";
-const char* password = "pass";
+const char* ssid = "???";
+const char* password = "???";
 
 // Server til at modtage beaconsene at lede efter og sende de beaconsene der er i nærheden op
 String serverName = "http://192.168.75.236:8080";
@@ -50,13 +50,13 @@ void loop() {
         int httpResponseCode = http.GET();
 
         if (httpResponseCode == 200) { 
-            String payload = http.getString();
+            String response = http.getString();
             http.end();
 
             Serial.println("Found devices: ");
-            Serial.println(payload);
+            Serial.println(response);
 
-            json data = json::parse(payload);
+            json data = json::parse(response);
 
             std::vector<std::string> targetUUIDs;
 
@@ -73,6 +73,7 @@ void loop() {
             int count = foundDevices.getCount();
             Serial.printf("Scan complete. Found %d devices.\n", count);
 
+            json payload = json::array({});  
             for (int i = 0; i < count; i++) {
                 BLEAdvertisedDevice device = foundDevices.getDevice(i);
                 
@@ -87,40 +88,39 @@ void loop() {
                         sprintf(uuidBuf, "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
                                 data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11],
                                 data[12], data[13], data[14], data[15], data[16], data[17], data[18], data[19]);
-
                         for (int j=0; j < targetUUIDs.size(); j++ ) {
                             if (targetUUIDs[j] == std::string(uuidBuf)) {
                                 int rssi = device.getRSSI();
                                 Serial.printf(">>> TARGET DETECTED! RSSI: %d\n", rssi);
                                 
-                                json payload =json::array({
-                                    {
+                                payload.push_back({
                                         {"uuid", targetUUIDs[j]},
-                                        {"decibel", rssi}
-                                    }
+                                        {"decibel", rssi} 
                                 });
-                                std::string requestBody = payload.dump();
-
-                                HTTPClient httpPost;
-
-                                String postUrl = serverName + "/data";
-                                httpPost.begin(postUrl.c_str());
-
-                                httpPost.addHeader("Content-Type", "application/json");
-
-                                int httpPostCode = httpPost.POST(String(requestBody.c_str()));
-
-                                if (httpPostCode > 0) {
-                                    Serial.printf("HTTP response code: %d\n", httpPostCode);
-                                } else {
-                                    Serial.printf("Error code: %s\n", http.errorToString(httpPostCode).c_str());
-                                }
-                                httpPost.end();
                             }
                         }
                     }
                 }
             }
+
+            std::string requestBody = payload.dump();
+
+            HTTPClient httpPost;
+
+            String postUrl = serverName + "/data";
+            httpPost.begin(postUrl.c_str());
+
+            httpPost.addHeader("Content-Type", "application/json");
+
+            int httpPostCode = httpPost.POST(String(requestBody.c_str()));
+
+            if (httpPostCode > 0) {
+                Serial.printf("HTTP response code: %d\n", httpPostCode);
+            } else {
+                Serial.printf("Error code: %s\n", http.errorToString(httpPostCode).c_str());
+            }
+            httpPost.end();
+
 
             // Stopper med at skanne og cleaner memory
             pBLEScan->stop(); 
