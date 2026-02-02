@@ -66,8 +66,8 @@ func (db Database) UpdateDeviceState(id int, state State) error {
 	return err
 }
 
-func (db Database) CreateDevice(uuid string, state State) error {
-	_, err := db.db.Exec("INSERT INTO devices (uuid, state) VALUES (?, ?)", uuid, state)
+func (db Database) CreateDevice(name string, uuid string, state State) error {
+	_, err := db.db.Exec("INSERT INTO devices (name, uuid, state) VALUES (?, ?, ?)", name, uuid, state)
 	if err != nil {
 		log.Fatal("Fejl under oprettelse af enhed", err)
 	}
