@@ -43,6 +43,7 @@ func main() {
 
 	router.HandleFunc("POST /data", handlePostData)
 	router.HandleFunc("GET /devices", handleGetAllDevices)
+	router.HandleFunc("POST /devices", handleCreateDevice)
 
 	server := http.Server{
 		Addr:    ":8080",
@@ -102,4 +103,33 @@ func handlePostData(w http.ResponseWriter, r *http.Request) {
 func handleGetAllDevices(w http.ResponseWriter, r *http.Request) {
 	devices := db.FindAllDevices()
 	json.NewEncoder(w).Encode(devices)
+}
+
+type createDeviceRequest struct {
+	Name string `json:"name"`
+	UUID string `json:"uuid"`
+}
+
+func handleCreateDevice(w http.ResponseWriter, r *http.Request) {
+	var req createDeviceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid request body"))
+		return
+	}
+
+	if req.Name == "" || req.UUID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Name and UUID are required"))
+		return
+	}
+
+	if err := db.CreateDevice(req.Name, req.UUID, StateGone); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to create device"))
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write(nil)
 }
