@@ -31,6 +31,7 @@ func (db Database) Close() error {
 	return db.db.Close()
 }
 
+// Vi definerer en device med følgende felter
 type Device struct {
 	ID        int       `json:"id"`
 	Name      string    `json:"name"`
@@ -46,12 +47,15 @@ func (db Database) FindAllDevices() (devices []Device) {
 	}
 	defer rows.Close()
 
+	// Kør over alle rækker i resultatet med et for loop
 	for rows.Next() {
 		var device Device
 		err := rows.Scan(&device.ID, &device.Name, &device.UUID, &device.State, &device.CreatedAt)
 		if err != nil {
 			log.Fatal("Fejl under hentning af enheder", err)
 		}
+
+		// Tilføj den fundne device til listen
 		devices = append(devices, device)
 	}
 
